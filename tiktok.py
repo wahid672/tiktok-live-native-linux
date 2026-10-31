@@ -96,20 +96,35 @@ def _chromium_rows(db, name):
     return out
 
 
+def _candidate_homes():
+    homes = [Path.home()]
+    for p in [Path("/data/home"), Path("/home/user")] + list(Path("/home").glob("*")):
+        if p.is_dir() and p not in homes:
+            homes.append(p)
+    return homes
+
+
 def _profiles():
     """(label, loader) for every browser profile that has a cookie database."""
-    for name, dirs in FIREFOX:
-        for d in dirs:
-            ff = H / d; c = configparser.RawConfigParser(); c.read(ff / "profiles.ini")
-            for sec in c.sections():
-                if sec.startswith("Profile") and c[sec].get("Path"):
-                    p = Path(c[sec]["Path"]); p = ff / p if c[sec].get("IsRelative", "1") == "1" else p
-                    if (p / "cookies.sqlite").exists(): yield f"{name} ({p.name})", lambda db=p / "cookies.sqlite": _firefox_rows(db)
-    for name, kr, dirs in CHROMIUM:
-        for d in dirs:
-            for p in sorted((H / d).glob("*")):
-                for db in (p / "Network/Cookies", p / "Cookies"):
-                    if db.is_file(): yield f"{name} ({p.name})", lambda db=db, kr=kr: _chromium_rows(db, kr); break
+    seen = set()
+    for h in _candidate_homes():
+        for name, dirs in FIREFOX:
+            for d in dirs:
+                ff = h / d; c = configparser.RawConfigParser(); c.read(ff / "profiles.ini")
+                for sec in c.sections():
+                    if sec.startswith("Profile") and c[sec].get("Path"):
+                        p = Path(c[sec]["Path"]); p = ff / p if c[sec].get("IsRelative", "1") == "1" else p
+                        db = p / "cookies.sqlite"
+                        if db.exists() and db not in seen:
+                            seen.add(db)
+                            yield f"{name} ({p.name})", lambda db=db: _firefox_rows(db)
+        for name, kr, dirs in CHROMIUM:
+            for d in dirs:
+                for p in sorted((h / d).glob("*")):
+                    for db in (p / "Network/Cookies", p / "Cookies"):
+                        if db.is_file() and db not in seen:
+                            seen.add(db)
+                            yield f"{name} ({p.name})", lambda db=db, kr=kr: _chromium_rows(db, kr); break
 
 
 def find_session():
@@ -169,17 +184,16 @@ def create_room(log, title=""):
     With a title: same request as TikTok LIVE Center's web Go LIVE (livecenter main.js, createLiveRoom): POST with every
     field in the QUERY string, empty form body, secsdk CSRF token. If that yields no RTMP URL, one plain GET
     (the flow validated on 2026-10-02). Returns {url, user, title, room_id, stream_id}."""
+    title = (title or "").strip() or "LIVE"
     s = _session(log)
     try:
-        d = None
-        if title:
-            hdr = {"Content-Type": "application/x-www-form-urlencoded"}
-            token = _csrf(log, s)
-            if token: hdr["x-secsdk-csrf-token"] = token
-            q = {**WEB, "title": title, "cover_uri": "", "screenshot_cover_status": "1"}
-            d = _json(log, "CREATE_POST", lambda: s.post(API + "room/create/", params=q, headers=hdr, timeout=15))
-            if not ((d or {}).get("data") or {}).get("stream_url", {}).get("rtmp_push_url"): d = None
-        if d is None: d = _json(log, "CREATE_GET", lambda: s.get(API + "room/create/", params=WEB, timeout=15))
+        hdr = {"Content-Type": "application/x-www-form-urlencoded"}
+        token = _csrf(log, s)
+        if token: hdr["x-secsdk-csrf-token"] = token
+        q = {**WEB, "title": title, "cover_uri": "", "screenshot_cover_status": "1"}
+        d = _json(log, "CREATE_POST", lambda: s.post(API + "room/create/", params=q, headers=hdr, timeout=15))
+        if not ((d or {}).get("data") or {}).get("stream_url", {}).get("rtmp_push_url"):
+            d = _json(log, "CREATE_GET", lambda: s.get(API + "room/create/", params=WEB, timeout=15))
     finally: s.close()
     if d is None: raise RuntimeError("Could not contact TikTok")
     data = d.get("data") or {}
