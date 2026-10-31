@@ -22,7 +22,7 @@ LOGS.mkdir(parents=True, exist_ok=True); CFG.mkdir(parents=True, exist_ok=True)
 FORMATS = {"vertical720": (720, 1280), "vertical": (1080, 1920), "horizontal": (1920, 1080)}
 FORMAT_NAMES = {"vertical720": "Vertical 720×1280", "vertical": "Vertical 1080×1920", "horizontal": "Horizontal 1920×1080"}
 QUALITY = {"25": 25, "30": 30, "60": 60}  # fps
-QUALITY_NAMES = {"25": "25 FPS (conexión lenta)", "30": "30 FPS (recomendado)", "60": "60 FPS (más fluido, más subida)"}
+QUALITY_NAMES = {"25": "25 FPS (slow connection)", "30": "30 FPS (recommended)", "60": "60 FPS (smoother, higher bitrate)"}
 BITRATE = {(False, 25): 2500, (False, 30): 3000, (False, 60): 4500, (True, 25): 4000, (True, 30): 4500, (True, 60): 6000}
 THREADS = min(8, os.cpu_count() or 2)
 
@@ -31,7 +31,7 @@ def video_kbps(cfg):
     """Video bitrate by canvas size (720p vs 1080p class) and fps; 1080p at 720p's bitrate looked soft."""
     W, H = FORMATS[cfg["orientation"]]
     return BITRATE[(W * H > 1280 * 720, QUALITY[cfg["quality"]])]
-LAYOUT_NAMES = {"pip": "Pantalla + cámara PiP", "screen": "Pantalla completa", "camera": "Cámara completa", None: "Sin vídeo"}
+LAYOUT_NAMES = {"pip": "Screen + camera PiP", "screen": "Full screen", "camera": "Full camera", None: "No video"}
 DEFAULTS = {"title": "", "engine": "app", "record_live": False, "chat_overlay": True, "desktop_audio": True, "camera_mode": "", "orientation": "vertical720", "quality": "25", "screen": True, "camera": False, "camera_device": "",
             "microphone": True, "mic_device": "", "pip_size": 0.30, "pip_x": 1.0, "pip_y": 0.0}
 
@@ -225,19 +225,19 @@ def pick_output(default, sinks, inputs):
     return names.get(playing[0], default)
 
 
-def summary(cfg, cams=None, title="FUENTES DE PRUEBA"):
+def summary(cfg, cams=None, title="TEST SOURCES"):
     W, H = FORMATS[cfg["orientation"]]; F, KB = QUALITY[cfg["quality"]], video_kbps(cfg)
     cam = next((c for c in cams or [] if c["path"] == cfg["camera_device"]), None)
     if cam: cam = {**cam, **next((m for m in cam["modes"] if m["label"] == cfg["camera_mode"]), {})}
-    real = title == "EMISIÓN REAL"
-    return "\n".join([title, "", *([f"Título: {cfg['title'] or '(sin título)'}"] if real else []),
-        *([f"Grabación local: " + ("Sí → recordings/" if cfg["record_live"] else "No")] if real else []),
-        "Pantalla: " + ("Sí (portal GNOME)" if cfg["screen"] else "No"),
-        "Cámara: " + ((cfg["camera_device"] or "NO SELECCIONADA") + (f" ({cam['name']}, {cam['label']})" if cam else "")
+    real = title in ("EMISIÓN REAL", "REAL BROADCAST")
+    return "\n".join([title, "", *([f"Title: {cfg['title'] or '(untitled)'}"] if real else []),
+        *([f"Local recording: " + ("Yes → recordings/" if cfg["record_live"] else "No")] if real else []),
+        "Screen: " + ("Yes (GNOME portal)" if cfg["screen"] else "No"),
+        "Camera: " + ((cfg["camera_device"] or "NOT SELECTED") + (f" ({cam['name']}, {cam['label']})" if cam else "")
                       if cfg["camera"] else "No"),
-        "Micrófono: " + ((cfg["mic_device"] or "predeterminado") if cfg["microphone"] else "No"),
-        "Audio del equipo: " + (f"Sí ({desktop_monitor() or 'NO DISPONIBLE'})" if cfg["desktop_audio"] else "No"),
-        f"Resolución: {W}x{H}", f"FPS: {F} · vídeo {KB} kbps · audio AAC 128 kbps 48 kHz",
+        "Microphone: " + ((cfg["mic_device"] or "default") if cfg["microphone"] else "No"),
+        "Desktop audio: " + (f"Yes ({desktop_monitor() or 'NOT AVAILABLE'})" if cfg["desktop_audio"] else "No"),
+        f"Resolution: {W}x{H}", f"FPS: {F} · video {KB} kbps · audio AAC 128 kbps 48 kHz",
         f"Layout: {LAYOUT_NAMES[layout(cfg)]}"])
 
 
@@ -259,7 +259,7 @@ class ScreenPortal:
         sid = []
         def resp(c, s, p, i, sg, par, u):
             self.bus.signal_unsubscribe(sid[0]); code, data = par.unpack(); self.log(f"{method}={code}")
-            if code: return self.on_error(f"{method} cancelado/fallido (código {code})")
+            if code: return self.on_error(f"{method} cancelled/failed (code {code})")
             try: cb(data)
             except Exception as e: self.on_error(f"{method}: {e!r}")
         # Subscribe before calling: avoids missing a fast Response.
@@ -285,7 +285,7 @@ class ScreenPortal:
             self._request("Start", "(osa{sv})", (self.session, ""), {}, started)
         def started(data):
             streams = data.get("streams", [])
-            if not streams: return on_error("El portal no devolvió ningún stream")
+            if not streams: return on_error("The portal did not return any streams")
             if data.get("restore_token"): self.TOKEN.write_text(json.dumps({"restore_token": data["restore_token"]}))
             self.node = int(streams[0][0]); self.log(f"NODE={self.node}")
             self.monitor = streams[0][1].get("source_type", 1) == 1  # 1 monitor, 2 window, 4 virtual
@@ -298,7 +298,7 @@ class ScreenPortal:
         try:
             self._request("CreateSession", "(a{sv})", (), {"session_handle_token": GLib.Variant("s", f"tt_session_{time.time_ns()}")}, created)
         except Exception as e:
-            on_error(f"Portal no disponible: {e!r}")
+            on_error(f"Portal not available: {e!r}")
 
     def close(self):
         if self.session:
@@ -348,9 +348,9 @@ def preview_sink(cfg, long_side=960):
 def rtmp_parts(url):
     """rtmp://host[:port]/app/stream?query -> (host, port, app, stream?query). TikTok's query (expire/sign) is part of the stream."""
     u = urlsplit(url)
-    if u.scheme != "rtmp" or not u.hostname: raise ValueError("URL RTMP no válida")
+    if u.scheme != "rtmp" or not u.hostname: raise ValueError("Invalid RTMP URL")
     app, _, stream = u.path.lstrip("/").partition("/")
-    if not app or not stream: raise ValueError("URL RTMP sin aplicación/stream")
+    if not app or not stream: raise ValueError("RTMP URL missing application/stream")
     return u.hostname, u.port or 1935, app, stream + ("?" + u.query if u.query else "")
 
 
@@ -456,7 +456,7 @@ class Engine:
     def start(self):
         self.log(f"PIPELINE_BUILD=OK mode={self.mode}")
         if self.pipe.set_state(Gst.State.PLAYING) == Gst.StateChangeReturn.FAILURE:
-            self.error = self.error or "No se pudo arrancar el pipeline"; self.log("PIPELINE_START=FAIL")
+            self.error = self.error or "Could not start pipeline"; self.log("PIPELINE_START=FAIL")
             if self.on_error: GLib.idle_add(lambda: self.on_error(self.error) and False)
 
     def set_geometry(self, cfg, cam=None):
@@ -489,12 +489,12 @@ def check_devices(cfg, cams=None):
     cam = None
     if layout(cfg) in ("pip", "camera"):
         cam = next((c for c in cams or list_cameras() if c["path"] == cfg["camera_device"]), None)
-        if not cam: return ("CAMERA=FAIL", f"Cámara no disponible: {cfg['camera_device'] or 'ninguna seleccionada'}"), None
+        if not cam: return ("CAMERA=FAIL", f"Camera not available: {cfg['camera_device'] or 'none selected'}"), None
         cam = {**cam, **next((m for m in cam["modes"] if m["label"] == cfg["camera_mode"]), {})}  # "" = automatic
     if cfg["microphone"] and cfg["mic_device"] and cfg["mic_device"] not in [m[0] for m in list_mics()]:
-        return ("MIC=FAIL", f"Micrófono no disponible: {cfg['mic_device']}"), cam
+        return ("MIC=FAIL", f"Microphone not available: {cfg['mic_device']}"), cam
     if cfg["desktop_audio"] and not desktop_monitor():
-        return ("DESKTOP_AUDIO=FAIL", "No encuentro la salida de audio predeterminada para capturar el sonido del equipo"), cam
+        return ("DESKTOP_AUDIO=FAIL", "Cannot find default audio output to capture desktop sound"), cam
     return None, cam
 
 
@@ -520,14 +520,14 @@ def run_local_test(cfg, log, on_done, screen=None, cams=None, seconds=8, preview
     reports PASS/FAIL per stage. Requested-but-silent sources fail the test. on_done(ok, engine)."""
     lay = layout(cfg); cam = None
     text = summary(cfg, cams)
-    if screen == "test": text = text.replace("Sí (portal GNOME)", "Sí (SIMULADA: videotestsrc, sin portal)")
+    if screen == "test": text = text.replace("Yes (GNOME portal)", "Yes (SIMULATED: videotestsrc, no portal)").replace("Sí (portal GNOME)", "Sí (SIMULADA: videotestsrc, sin portal)")
     for line in text.splitlines(): log(line)
     log(f"CONFIG={'x'.join(map(str, FORMATS[cfg['orientation']]))} screen={cfg['screen']} camera={cfg['camera']} "
         f"mic={cfg['microphone']} layout={lay} screen_source={'videotestsrc' if screen == 'test' else 'portal'}")
     def fail(msg):
         log("ERROR=" + msg); log("AV_LOCAL_TEST=FAIL"); GLib.idle_add(lambda: on_done(False, None) and False)
-    if not lay: return fail("Selecciona pantalla y/o cámara")
-    if cfg["screen"] and not screen: return fail("Pantalla activada pero no hay sesión del portal")
+    if not lay: return fail("Select screen and/or camera")
+    if cfg["screen"] and not screen: return fail("Screen enabled but no portal session")
     err, cam = check_devices(cfg, cams)
     if err: log(err[0]); return fail(err[1])
     if cam: log(f"CAMERA_CAPS={cam['caps']}")

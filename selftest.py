@@ -50,7 +50,7 @@ assert v["resolution"] == (1280 << 16) | 720 and v["framerate"] == (1 << 16) | 3
 col = OL.scene_collection({**cfg, "orientation": "horizontal"}, {"caps": "image/jpeg,width=1920,height=1080,framerate=30/1",
                                                                  "jpeg": True, "w": 1920, "h": 1080})
 it = {i["name"]: i for i in col["sources"][0]["settings"]["items"]}
-assert (it["Cámara"]["pos"]["x"], it["Cámara"]["bounds"]["x"]) == (E.geometry({**cfg, "orientation": "horizontal"}, 1920, 1080)["camera"][0],
+assert (it["Camera"]["pos"]["x"], it["Camera"]["bounds"]["x"]) == (E.geometry({**cfg, "orientation": "horizontal"}, 1920, 1080)["camera"][0],
                                                                    E.geometry({**cfg, "orientation": "horizontal"}, 1920, 1080)["camera"][2])
 
 # TikTok push URL: the signed query belongs to the stream name

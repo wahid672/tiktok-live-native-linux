@@ -58,19 +58,19 @@ def scene_collection(cfg, cam=None, screen_monitor=True, restore_token="", deskt
     sources, items = [], []
     if "screen" in g:
         sid = "pipewire-screen-capture-source" if screen_monitor else "pipewire-window-capture-source"
-        src = _source(sid, "Pantalla" if screen_monitor else "Ventana", {"RestoreToken": restore_token, "ShowCursor": True})
+        src = _source(sid, "Screen" if screen_monitor else "Window", {"RestoreToken": restore_token, "ShowCursor": True})
         sources.append(src); items.append(_item(src, len(items) + 1, g["screen"], W, H))
     if "camera" in g and cam:
-        src = _source("v4l2_input", "Cámara", v4l2_settings(cfg, cam))
+        src = _source("v4l2_input", "Camera", v4l2_settings(cfg, cam))
         sources.append(src); items.append(_item(src, len(items) + 1, g["camera"], W, H))
     scene = _source("scene", "LIVE", {"items": items, "id_counter": len(items), "custom_size": False})
     col = {"name": NAME, "current_scene": "LIVE", "current_program_scene": "LIVE", "scene_order": [{"name": "LIVE"}],
            "sources": [scene, *sources], "groups": [], "transitions": [], "current_transition": "Fade", "transition_duration": 300,
            "quick_transitions": [], "saved_projectors": [], "modules": {}}
     if cfg["desktop_audio"]:
-        col["DesktopAudioDevice1"] = _source("pulse_output_capture", "Audio del equipo", {"device_id": desktop_dev or "default"})
+        col["DesktopAudioDevice1"] = _source("pulse_output_capture", "Desktop Audio", {"device_id": desktop_dev or "default"})
     if cfg["microphone"]:
-        col["AuxAudioDevice1"] = _source("pulse_input_capture", "Micrófono", {"device_id": cfg["mic_device"] or "default"})
+        col["AuxAudioDevice1"] = _source("pulse_input_capture", "Microphone", {"device_id": cfg["mic_device"] or "default"})
     return col
 
 

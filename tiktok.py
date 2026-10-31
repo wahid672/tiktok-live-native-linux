@@ -137,7 +137,7 @@ WEB = {"aid": "1988", "app_name": "tiktok_web", "device_platform": "web", "chann
 
 def _session(log):
     p, rows = find_session()
-    if not p: log("TIKTOK_AUTH=FAIL no_session"); raise RuntimeError("No hay sesión de TikTok en ningún navegador. Inicia sesión en tiktok.com con tu navegador.")
+    if not p: log("TIKTOK_AUTH=FAIL no_session"); raise RuntimeError("No active TikTok session found in any browser. Please log in to tiktok.com in your browser.")
     s = requests.Session()
     s.headers.update({"User-Agent": UA, "Accept": "application/json, text/plain, */*",
                       "Referer": "https://www.tiktok.com/live", "Origin": "https://www.tiktok.com"})
@@ -181,14 +181,14 @@ def create_room(log, title=""):
             if not ((d or {}).get("data") or {}).get("stream_url", {}).get("rtmp_push_url"): d = None
         if d is None: d = _json(log, "CREATE_GET", lambda: s.get(API + "room/create/", params=WEB, timeout=15))
     finally: s.close()
-    if d is None: raise RuntimeError("No se pudo contactar con TikTok")
+    if d is None: raise RuntimeError("Could not contact TikTok")
     data = d.get("data") or {}
     url = (data.get("stream_url") or {}).get("rtmp_push_url", "")
     if url: Log.secrets.add(url)
     if d.get("status_code") != 0 or not url.startswith("rtmp"):
-        msg = str(data.get("message") or data.get("prompts") or d.get("message") or "sin detalle")[:200]
+        msg = str(data.get("message") or data.get("prompts") or d.get("message") or "no details")[:200]
         log("TIKTOK_AUTH=FAIL" if d.get("status_code") else "TIKTOK_AUTH=PASS"); log("RTMP=NOT_OBTAINED reason=" + msg)
-        raise RuntimeError(f"TikTok no ha devuelto URL RTMP (status_code={d.get('status_code')}): {msg}")
+        raise RuntimeError(f"TikTok did not return an RTMP URL (status_code={d.get('status_code')}): {msg}")
     log("TIKTOK_AUTH=PASS"); log("RTMP=OBTAINED")
     room_id = data.get("id_str") or str(data.get("id") or "")
     owner = data.get("owner") or {}

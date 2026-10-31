@@ -24,9 +24,9 @@ class ChatPanel(Gtk.Box):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6, width_request=360, visible=False)
         self.log = log; self.cfg = cfg; self.view = None; self.user = None; self.proc = None
         head = Gtk.Box(spacing=6); self.append(head)
-        t = Gtk.Label(label="Espectadores y chat", xalign=0, hexpand=True); t.add_css_class("heading"); head.append(t)
-        self.b_overlay = Gtk.ToggleButton(label="Superponer", active=cfg["chat_overlay"],
-                                          tooltip_text="Mostrar u ocultar el chat semitransparente siempre encima (se recuerda)")
+        t = Gtk.Label(label="Viewers and Chat", xalign=0, hexpand=True); t.add_css_class("heading"); head.append(t)
+        self.b_overlay = Gtk.ToggleButton(label="Overlay", active=cfg["chat_overlay"],
+                                          tooltip_text="Show or hide translucent always-on-top chat overlay (remembered)")
         self.b_overlay.connect("toggled", self.on_toggle); head.append(self.b_overlay)
 
     def on_toggle(self, b):
@@ -79,13 +79,13 @@ class Win:
 
     def update_available(self, tag, url):
         self.log(f"UPDATE_AVAILABLE {tag}")
-        t = Adw.Toast(title=f"Hay una versión nueva: {tag}", button_label="Descargar", timeout=0)
+        t = Adw.Toast(title=f"A new version is available: {tag}", button_label="Download", timeout=0)
         t.connect("button-clicked", lambda *_: subprocess.Popen(["xdg-open", url], env=E.host_env()))
         self.toasts.add_toast(t)
 
     def on_install(self, *_):
         ok, how = E.install_desktop_entry(); self.log(f"DESKTOP_ENTRY={how}")
-        self.toasts.add_toast(Adw.Toast(title="Ya está en el cajón de aplicaciones" if ok else f"No se pudo instalar: {how}"))
+        self.toasts.add_toast(Adw.Toast(title="Added to application menu" if ok else f"Could not install: {how}"))
 
     # ------------------------------------------------------------ UI
     def build(self):
@@ -99,70 +99,70 @@ class Win:
         self.settings = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
 
         g = Adw.PreferencesGroup(title="TikTok"); left.append(g)
-        self.row_session = Adw.ActionRow(title="Sesión"); g.add(self.row_session)
-        b = Gtk.Button(label="Comprobar", valign=Gtk.Align.CENTER); b.connect("clicked", lambda *_: self.refresh_session())
+        self.row_session = Adw.ActionRow(title="Session"); g.add(self.row_session)
+        b = Gtk.Button(label="Check", valign=Gtk.Align.CENTER); b.connect("clicked", lambda *_: self.refresh_session())
         self.row_session.add_suffix(b)
-        self.e_title = Adw.EntryRow(title="Título del LIVE", text=self.cfg["title"]); g.add(self.e_title)
+        self.e_title = Adw.EntryRow(title="LIVE Title", text=self.cfg["title"]); g.add(self.e_title)
         self.e_title.connect("changed", lambda e: (self.cfg.__setitem__("title", e.get_text().strip()), E.save_cfg(self.cfg)))
-        sw = Adw.SwitchRow(title="Grabar el LIVE", subtitle=f"Copia exacta de lo emitido en {E.recordings_dir()}", active=self.cfg["record_live"])
+        sw = Adw.SwitchRow(title="Record LIVE", subtitle=f"Exact copy of broadcast saved to {E.recordings_dir()}", active=self.cfg["record_live"])
         sw.connect("notify::active", lambda r, _: (self.cfg.__setitem__("record_live", r.get_active()), E.save_cfg(self.cfg))); g.add(sw)
-        b = Gtk.Button(icon_name="folder-open-symbolic", tooltip_text="Abrir carpeta de grabaciones", valign=Gtk.Align.CENTER)
+        b = Gtk.Button(icon_name="folder-open-symbolic", tooltip_text="Open recordings folder", valign=Gtk.Align.CENTER)
         b.connect("clicked", lambda *_: subprocess.Popen(["xdg-open", str(E.recordings_dir())], env=E.host_env())); sw.add_suffix(b)
-        g.add(Adw.ActionRow(title="LIVE", subtitle="Se confirma al pulsar Iniciar LIVE: TikTok crea la sala en ese momento, no antes."))
+        g.add(Adw.ActionRow(title="LIVE", subtitle="Confirmed when clicking Start LIVE: TikTok creates the room at that moment, not before."))
         has_obs = bool(OL.obs_binary())
-        self.c_engine = self.combo("Emitir con", ["La app", "OBS integrado" if has_obs else "OBS integrado (no disponible)"],
+        self.c_engine = self.combo("Broadcast with", ["This app", "Integrated OBS" if has_obs else "Integrated OBS (not available)"],
                                    1 if self.cfg["engine"] == "obs" and has_obs else 0,
                                    lambda i: self.set("engine", "obs" if i == 1 and has_obs else "app"))
-        self.c_engine.set_subtitle("OBS abre con la misma escena, la clave puesta y emitiendo" if has_obs else
-                                   "OBS va incluido en el AppImage"); g.add(self.c_engine)
-        row = Adw.ActionRow(title="Datos para OBS", subtitle="Servidor y clave para pegar en tu propio OBS (crea la sala en TikTok)")
-        self.b_obs = Gtk.Button(label="Datos para OBS", valign=Gtk.Align.CENTER); self.b_obs.connect("clicked", self.on_obs)
+        self.c_engine.set_subtitle("OBS opens with the same scene, stream key set, and broadcasting" if has_obs else
+                                   "OBS is included in the AppImage"); g.add(self.c_engine)
+        row = Adw.ActionRow(title="Data for OBS", subtitle="Server and key to paste in your own OBS (creates room on TikTok)")
+        self.b_obs = Gtk.Button(label="Data for OBS", valign=Gtk.Align.CENTER); self.b_obs.connect("clicked", self.on_obs)
         row.add_suffix(self.b_obs); g.add(row)
         if os.environ.get("APPIMAGE"):
-            row = Adw.ActionRow(title="Instalar en el sistema", subtitle="Añade la app al cajón de aplicaciones")
-            b = Gtk.Button(label="Instalar", valign=Gtk.Align.CENTER); b.connect("clicked", self.on_install)
+            row = Adw.ActionRow(title="Install in system", subtitle="Add app to application launcher")
+            b = Gtk.Button(label="Install", valign=Gtk.Align.CENTER); b.connect("clicked", self.on_install)
             row.add_suffix(b); g.add(row)
         left.append(self.settings)
 
-        g = Adw.PreferencesGroup(title="Vídeo"); self.settings.append(g)
-        self.c_format = self.combo("Formato", [E.FORMAT_NAMES[k] for k in E.FORMATS], list(E.FORMATS).index(self.cfg["orientation"]),
+        g = Adw.PreferencesGroup(title="Video"); self.settings.append(g)
+        self.c_format = self.combo("Format", [E.FORMAT_NAMES[k] for k in E.FORMATS], list(E.FORMATS).index(self.cfg["orientation"]),
                                    lambda i: self.set("orientation", list(E.FORMATS)[i])); g.add(self.c_format)
-        self.s_screen = self.switch("Pantalla / ventana", "screen"); g.add(self.s_screen)
-        self.row_pick = Adw.ActionRow(title="Captura de pantalla", subtitle="No seleccionada"); g.add(self.row_pick)
-        b = Gtk.Button(label="Seleccionar…", valign=Gtk.Align.CENTER); b.connect("clicked", lambda *_: self.pick_screen(forget=True))
+        self.s_screen = self.switch("Screen / Window", "screen"); g.add(self.s_screen)
+        self.row_pick = Adw.ActionRow(title="Screen Capture", subtitle="Not selected"); g.add(self.row_pick)
+        b = Gtk.Button(label="Select…", valign=Gtk.Align.CENTER); b.connect("clicked", lambda *_: self.pick_screen(forget=True))
         self.row_pick.add_suffix(b)
-        self.s_camera = self.switch("Cámara", "camera"); g.add(self.s_camera)
-        names = [f"{c['name']} ({c['path']})" for c in self.cams] or ["No detectada"]
+        self.s_camera = self.switch("Camera", "camera"); g.add(self.s_camera)
+        names = [f"{c['name']} ({c['path']})" for c in self.cams] or ["Not detected"]
         idx = next((i for i, c in enumerate(self.cams) if c["path"] == self.cfg["camera_device"]), 0)
         if self.cams and not self.cfg["camera_device"]: self.cfg["camera_device"] = self.cams[0]["path"]
-        self.c_cam = self.combo("Dispositivo de cámara", names, idx, lambda i: self.cams and self.set_camera(self.cams[i]["path"]))
+        self.c_cam = self.combo("Camera Device", names, idx, lambda i: self.cams and self.set_camera(self.cams[i]["path"]))
         g.add(self.c_cam)
-        self.c_mode = Adw.ComboRow(title="Resolución de cámara"); g.add(self.c_mode)
+        self.c_mode = Adw.ComboRow(title="Camera Resolution"); g.add(self.c_mode)
         self.c_mode.connect("notify::selected", self.on_mode); self.fill_modes()
         if not self.cams: self.cfg["camera"] = False; self.s_camera.set_sensitive(False)
         self.row_layout = Adw.ActionRow(title="Layout"); g.add(self.row_layout)
 
         g = Adw.PreferencesGroup(title="Audio"); self.settings.append(g)
-        self.s_mic = self.switch("Micrófono", "microphone"); g.add(self.s_mic)
-        r = self.switch("Audio del equipo", "desktop_audio"); r.set_subtitle("Lo que suena en tu PC (juego, navegador…), mezclado con el micrófono")
+        self.s_mic = self.switch("Microphone", "microphone"); g.add(self.s_mic)
+        r = self.switch("Desktop Audio", "desktop_audio"); r.set_subtitle("Sound playing on your PC (game, browser…), mixed with microphone")
         g.add(r)
-        mnames = ["Predeterminado del sistema"] + [d for _, d in self.mics]
+        mnames = ["System Default"] + [d for _, d in self.mics]
         midx = next((i + 1 for i, m in enumerate(self.mics) if m[0] == self.cfg["mic_device"]), 0)
-        g.add(self.combo("Dispositivo de micrófono", mnames, midx, lambda i: self.set("mic_device", self.mics[i - 1][0] if i else "")))
+        g.add(self.combo("Microphone Device", mnames, midx, lambda i: self.set("mic_device", self.mics[i - 1][0] if i else "")))
 
-        g = Adw.PreferencesGroup(title="Calidad"); self.settings.append(g)
-        g.add(self.combo("FPS / bitrate", [E.QUALITY_NAMES[k] for k in E.QUALITY], list(E.QUALITY).index(self.cfg["quality"]),
+        g = Adw.PreferencesGroup(title="Quality"); self.settings.append(g)
+        g.add(self.combo("FPS / Bitrate", [E.QUALITY_NAMES[k] for k in E.QUALITY], list(E.QUALITY).index(self.cfg["quality"]),
                          lambda i: self.set("quality", list(E.QUALITY)[i])))
 
         # PiP stays editable during LIVE: it moves compositor pads without rebuilding the pipeline.
-        self.g_pip = Adw.PreferencesGroup(title="Cámara PiP",
-                                          description="Arrástrala con el ratón en la vista previa; rueda = tamaño. Se aplica en directo.")
+        self.g_pip = Adw.PreferencesGroup(title="Camera PiP",
+                                          description="Drag with mouse in preview; scroll wheel = size. Applied live.")
         left.append(self.g_pip); self.pip_rows = {}; self._syncing = False; self._pip_save = 0
         corners = Gtk.Box(spacing=6, homogeneous=True, margin_bottom=6)
-        for label, fx, fy in (("↖ Arriba izq.", 0, 0), ("↗ Arriba der.", 1, 0), ("↙ Abajo izq.", 0, 1), ("↘ Abajo der.", 1, 1)):
+        for label, fx, fy in (("↖ Top-left", 0, 0), ("↗ Top-right", 1, 0), ("↙ Bottom-left", 0, 1), ("↘ Bottom-right", 1, 1)):
             b = Gtk.Button(label=label); b.connect("clicked", lambda _b, fx=fx, fy=fy: self.set_pip(pip_x=fx, pip_y=fy)); corners.append(b)
         self.g_pip.add(corners)
-        for title, key in (("Tamaño (% del ancho)", "pip_size"), ("Posición X (0 izq. – 100 der.)", "pip_x"), ("Posición Y (0 arriba – 100 abajo)", "pip_y")):
+        for title, key in (("Size (% of width)", "pip_size"), ("Position X (0 left – 100 right)", "pip_x"), ("Position Y (0 top – 100 bottom)", "pip_y")):
             r = Adw.SpinRow.new_with_range(5 if key == "pip_size" else 0, 100, 1); r.set_title(title); self.pip_rows[key] = r
             r.set_value(round(self.cfg[key] * 100)); r.connect("notify::value", self.on_pip, key); self.g_pip.add(r)
 
@@ -183,9 +183,9 @@ class Win:
         self.overlay.add_css_class("title-3"); ov.add_overlay(self.overlay); right.append(ov)
 
         btns = Gtk.Box(spacing=8, homogeneous=True); right.append(btns)
-        self.b_test = Gtk.Button(label="PROBAR LOCALMENTE (8 s)"); self.b_test.connect("clicked", self.on_test)
-        self.b_live = Gtk.Button(label="INICIAR LIVE"); self.b_live.add_css_class("suggested-action"); self.b_live.connect("clicked", self.on_live)
-        self.b_stop = Gtk.Button(label="DETENER LIVE"); self.b_stop.add_css_class("destructive-action"); self.b_stop.connect("clicked", self.on_stop)
+        self.b_test = Gtk.Button(label="LOCAL TEST (8 s)"); self.b_test.connect("clicked", self.on_test)
+        self.b_live = Gtk.Button(label="START LIVE"); self.b_live.add_css_class("suggested-action"); self.b_live.connect("clicked", self.on_live)
+        self.b_stop = Gtk.Button(label="STOP LIVE"); self.b_stop.add_css_class("destructive-action"); self.b_stop.connect("clicked", self.on_stop)
         for b in (self.b_test, self.b_live, self.b_stop): b.add_css_class("pill"); btns.append(b)
         self.status = Gtk.Label(xalign=0, wrap=True); self.status.add_css_class("heading"); right.append(self.status)
         self.logview = Gtk.TextView(editable=False, monospace=True, cursor_visible=False, wrap_mode=Gtk.WrapMode.CHAR)
@@ -199,7 +199,7 @@ class Win:
         """Modes of the selected camera; index 0 = automatic (validated pick)."""
         modes = self.cam_modes(); self._filling = True
         cam = next((c for c in self.cams if c["path"] == self.cfg["camera_device"]), None)
-        self.c_mode.set_model(Gtk.StringList.new([f"Automática ({cam['label']})" if cam else "Automática"] + [m["label"] for m in modes]))
+        self.c_mode.set_model(Gtk.StringList.new([f"Automatic ({cam['label']})" if cam else "Automatic"] + [m["label"] for m in modes]))
         self.c_mode.set_selected(next((i + 1 for i, m in enumerate(modes) if m["label"] == self.cfg["camera_mode"]), 0))
         self._filling = False
 
@@ -236,10 +236,10 @@ class Win:
         self.aspect.set_ratio(W / H)
         self.row_layout.set_subtitle(E.LAYOUT_NAMES[lay])
         self.g_pip.set_visible(lay == "pip"); self.c_cam.set_sensitive(c["camera"]); self.c_mode.set_sensitive(c["camera"]); self.row_pick.set_sensitive(c["screen"])
-        on = lambda b, m="ACTIVADA", f="DESACTIVADA": f"<b>{m}</b>" if b else f"<span alpha='60%'>{f}</span>"
+        on = lambda b, m="ENABLED", f="DISABLED": f"<b>{m}</b>" if b else f"<span alpha='60%'>{f}</span>"
         self.sources.set_markup(
-            f"Pantalla: {on(c['screen'])}   ·   Cámara: {on(c['camera'])}{esc(' ' + c['camera_device']) if c['camera'] else ''}"
-            f"   ·   Micrófono: {on(c['microphone'], 'ACTIVADO', 'DESACTIVADO')}   ·   Audio equipo: {on(c['desktop_audio'], 'ACTIVADO', 'DESACTIVADO')}   ·   {W}×{H} @ {E.QUALITY[c['quality']]} fps · {E.video_kbps(c)} kbps")
+            f"Screen: {on(c['screen'])}   ·   Camera: {on(c['camera'])}{esc(' ' + c['camera_device']) if c['camera'] else ''}"
+            f"   ·   Microphone: {on(c['microphone'])}   ·   Desktop Audio: {on(c['desktop_audio'])}   ·   {W}×{H} @ {E.QUALITY[c['quality']]} fps · {E.video_kbps(c)} kbps")
         busy = self.mode in ("test", "connecting", "live", "stopping")
         self.settings.set_sensitive(not busy)
         self.b_test.set_sensitive(not busy); self.b_live.set_sensitive(not busy); self.b_obs.set_sensitive(not busy)
@@ -252,43 +252,43 @@ class Win:
 
     def ask(self, heading, body, ok, cb, danger=False):
         d = Adw.AlertDialog(heading=heading, body=body)
-        d.add_response("cancel", "CANCELAR"); d.add_response("ok", ok)
+        d.add_response("cancel", "CANCEL"); d.add_response("ok", ok)
         d.set_response_appearance("ok", Adw.ResponseAppearance.DESTRUCTIVE if danger else Adw.ResponseAppearance.SUGGESTED)
         d.set_default_response("cancel"); d.set_close_response("cancel")
         d.connect("response", lambda d, r: r == "ok" and cb()); d.present(self.win)
 
     def info(self, heading, body):
-        d = Adw.AlertDialog(heading=heading, body=body); d.add_response("ok", "Aceptar"); d.present(self.win)
+        d = Adw.AlertDialog(heading=heading, body=body); d.add_response("ok", "OK"); d.present(self.win)
 
     # ------------------------------------------------------------ session / sources
     def refresh_session(self):
         s = tiktok.session_status()
         self.log("TIKTOK_SESSION=" + ("FOUND" if s["ok"] else "NOT_FOUND"))
-        self.row_session.set_subtitle(f"● Sesión iniciada ({s['browser']}, caduca {s['expires']})" if s["ok"] else
-                                      "✕ Sin sesión: inicia sesión en tiktok.com con tu navegador y pulsa Comprobar")
+        self.row_session.set_subtitle(f"● Logged in ({s['browser']}, expires {s['expires']})" if s["ok"] else
+                                      "✕ Not logged in: log in to tiktok.com in your browser and click Check")
         return s["ok"]
 
     def pick_screen(self, forget):
         if self.mode in ("test", "connecting", "live", "stopping"): return
         def go():
             if self.portal: self.portal.close()
-            self.portal_ready = False; self.row_pick.set_subtitle("Esperando selector de GNOME…")
+            self.portal_ready = False; self.row_pick.set_subtitle("Waiting for GNOME picker…")
             self.portal = E.ScreenPortal(self.log); self.portal.start(self.portal_ok, self.portal_err, forget=forget)
         self.stop_engine(go)  # the running pipeline uses the old session
 
     def portal_ok(self, portal):
         self.portal_ready = True
-        self.row_pick.set_subtitle(("Pantalla completa" if portal.monitor else "Ventana") + f" · PipeWire nodo {portal.node}")
+        self.row_pick.set_subtitle(("Full screen" if portal.monitor else "Window") + f" · PipeWire node {portal.node}")
         self.schedule_rebuild()
 
     def portal_err(self, msg):
         self.log("PORTAL=FAIL " + msg); self.portal_ready = False
-        self.row_pick.set_subtitle("No seleccionada · " + msg); self.schedule_rebuild()
+        self.row_pick.set_subtitle("Not selected · " + msg); self.schedule_rebuild()
 
     def validate(self):
         c = self.cfg
-        if not E.layout(c): return "Activa pantalla y/o cámara."
-        if c["screen"] and not self.portal_ready: return "Pantalla activada pero sin seleccionar: pulsa «Seleccionar…»."
+        if not E.layout(c): return "Enable screen and/or camera."
+        if c["screen"] and not self.portal_ready: return "Screen enabled but not selected: click «Select…»."
         err, _ = E.check_devices(c, self.cams)
         return err and err[1]
 
@@ -332,8 +332,8 @@ class Win:
 
     def preview_error(self, err):
         self.log("PREVIEW_ERROR=" + err); self.eng = None; self.mode = "idle"
-        self.overlay.set_text("Preview detenida:\n" + err); self.overlay.set_visible(True)
-        if "screen_src" in err: self.portal_ready = False; self.row_pick.set_subtitle("La captura terminó · pulsa «Seleccionar…»")
+        self.overlay.set_text("Preview stopped:\n" + err); self.overlay.set_visible(True)
+        if "screen_src" in err: self.portal_ready = False; self.row_pick.set_subtitle("Capture ended · click «Select…»")
 
     def on_pip(self, row, _, key):
         if not self._syncing: self.set_pip(**{key: row.get_value() / 100})
@@ -364,13 +364,13 @@ class Win:
     # ------------------------------------------------------------ local test
     def on_test(self, *_):
         err = self.validate()
-        if err: return self.info("No se puede probar", err)
-        self.ask("Prueba local A/V (8 s)", E.summary(self.cfg, self.cams) + "\n\nNo conecta con TikTok. Guarda logs/av-test.mkv.",
-                 "PROBAR", self.run_test)
+        if err: return self.info("Cannot run test", err)
+        self.ask("Local A/V Test (8 s)", E.summary(self.cfg, self.cams) + "\n\nDoes not contact TikTok. Saves logs/av-test.mkv.",
+                 "TEST", self.run_test)
 
     def run_test(self):
-        self.set_mode("test", "Grabando prueba local de 8 s…")
-        tlog = E.Log("av-test.log", echo=self.append_log); tlog(f"=== TikTok LIVE Native {E.VERSION} · prueba A/V local (GUI) ===")
+        self.set_mode("test", "Recording 8 s local test…")
+        tlog = E.Log("av-test.log", echo=self.append_log); tlog(f"=== TikTok LIVE Native {E.VERSION} · local A/V test (GUI) ===")
         self.cam_now = E.check_devices(self.cfg, self.cams)[1]
         def go():
             eng = E.run_local_test(self.cfg, tlog, self.test_done, screen=self.portal if self.cfg["screen"] else None,
@@ -381,58 +381,58 @@ class Win:
     def test_done(self, ok, eng):
         lines = [l.split(" ", 1)[1] for l in (E.LOGS / "av-test.log").read_text().splitlines()
                  if l.split(" ", 1)[-1].split("=")[0] in ("SCREEN", "CAMERA", "MIC", "COMPOSITOR", "VIDEO_ENCODER", "AUDIO_ENCODER", "OUTPUT", "ERROR")]
-        self.set_mode("idle", "✔ Prueba local correcta · logs/av-test.mkv" if ok else "✖ Prueba local fallida · logs/av-test.log")
+        self.set_mode("idle", "✔ Local test successful · logs/av-test.mkv" if ok else "✖ Local test failed · logs/av-test.log")
         self.info("AV_LOCAL_TEST=" + ("PASS" if ok else "FAIL"), "\n".join(lines))
         self.schedule_rebuild()
 
     # ------------------------------------------------------------ LIVE
     def on_live(self, *_):
         err = self.validate()
-        if err: return self.info("No se puede iniciar", err)
-        if not self.refresh_session(): return self.info("Sin sesión TikTok", "Inicia sesión en tiktok.com con tu navegador y vuelve a intentarlo.")
-        body = E.summary(self.cfg, self.cams, "EMISIÓN REAL") + ("\nMotor: OBS integrado" if self.cfg["engine"] == "obs" else "")
-        self.ask("Vas a iniciar una emisión REAL en TikTok.", body, "INICIAR LIVE", self.go_live, danger=True)
+        if err: return self.info("Cannot start", err)
+        if not self.refresh_session(): return self.info("No TikTok Session", "Log in to tiktok.com in your browser and try again.")
+        body = E.summary(self.cfg, self.cams, "REAL BROADCAST") + ("\nEngine: Integrated OBS" if self.cfg["engine"] == "obs" else "")
+        self.ask("You are about to start a REAL broadcast on TikTok.", body, "START LIVE", self.go_live, danger=True)
 
     # ------------------------------------------------------------ OBS
     def on_obs(self, *_):
         if getattr(self, "obs_room", None): return self.show_obs(self.obs_room)  # same room until finished
-        if not self.refresh_session(): return self.info("Sin sesión TikTok", "Inicia sesión en tiktok.com con tu navegador y vuelve a intentarlo.")
-        self.ask("Datos para OBS", "TikTok crea la sala del LIVE en este momento (igual que al pulsar Iniciar LIVE).\n\n"
-                 f"Título: {self.cfg['title'] or '(sin título)'}\n\nLa clave es personal: no la compartas ni la enseñes en directo.",
-                 "OBTENER DATOS", self.fetch_obs)
+        if not self.refresh_session(): return self.info("No TikTok Session", "Log in to tiktok.com in your browser and try again.")
+        self.ask("Data for OBS", "TikTok creates the LIVE room right now (same as clicking Start LIVE).\n\n"
+                 f"Title: {self.cfg['title'] or '(untitled)'}\n\nThe stream key is personal: do not share or show it on stream.",
+                 "GET DATA", self.fetch_obs)
 
     def fetch_obs(self):
         self.log("OBS_DATA_REQUESTED")
         def run():
             try: room = tiktok.create_room(self.log, self.cfg["title"]); GLib.idle_add(self.got_obs, room)
-            except Exception as e: GLib.idle_add(lambda: self.info("No se pudo obtener", str(e)) and False)
+            except Exception as e: GLib.idle_add(lambda: self.info("Failed to get data", str(e)) and False)
         threading.Thread(target=run, daemon=True).start()
 
     def got_obs(self, room):
         self.obs_room = room; self.log("OBS_DATA=SHOWN"); self.show_obs(room); return False
 
     def show_obs(self, room):
-        """Server + stream key for OBS (Ajustes → Emisión → Personalizado). Never logged; key hidden until peeked."""
+        """Server + stream key for OBS (Settings → Stream → Custom). Never logged; key hidden until peeked."""
         host, port, app, key = E.rtmp_parts(room["url"])
         server = f"rtmp://{host}{'' if port == 1935 else f':{port}'}/{app}/"
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        for title, value, secret, done in (("Servidor", server, False, "Servidor copiado"), ("Clave de retransmisión", key, True, "Clave copiada")):
+        for title, value, secret, done in (("Server", server, False, "Server copied"), ("Stream Key", key, True, "Stream key copied")):
             box.append(Gtk.Label(label=title, xalign=0, css_classes=["heading"]))
             line = Gtk.Box(spacing=6)
             entry = Gtk.PasswordEntry(show_peek_icon=True, hexpand=True) if secret else Gtk.Entry(hexpand=True)
             entry.set_text(value); entry.set_editable(False); line.append(entry)
-            b = Gtk.Button(icon_name="edit-copy-symbolic", tooltip_text="Copiar")
+            b = Gtk.Button(icon_name="edit-copy-symbolic", tooltip_text="Copy")
             b.connect("clicked", lambda _b, v=value, t=done: (self.win.get_clipboard().set(v), self.toast(t)))
             line.append(b); box.append(line)
-        box.append(Gtk.Label(label="En OBS: Ajustes → Emisión → Servicio «Personalizado». Pulsa «Finalizar sala» al terminar.",
+        box.append(Gtk.Label(label="In OBS: Settings → Stream → Service «Custom». Click «End room» when done.",
                              wrap=True, xalign=0, css_classes=["dim-label"]))
-        d = Adw.AlertDialog(heading="Datos para OBS", extra_child=box)
-        d.add_response("finish", "Finalizar sala"); d.add_response("close", "Cerrar")
+        d = Adw.AlertDialog(heading="Data for OBS", extra_child=box)
+        d.add_response("finish", "End room"); d.add_response("close", "Close")
         d.set_response_appearance("finish", Adw.ResponseAppearance.DESTRUCTIVE); d.set_default_response("close"); d.set_close_response("close")
         def resp(d, r):
             if r == "finish":
                 r_, self.obs_room = self.obs_room, None
-                threading.Thread(target=tiktok.finish_room, args=(self.log, r_), daemon=True).start(); self.toast("Sala de TikTok finalizada")
+                threading.Thread(target=tiktok.finish_room, args=(self.log, r_), daemon=True).start(); self.toast("TikTok room ended")
         d.connect("response", resp); d.present(self.win)
 
     def toast(self, text):
@@ -440,7 +440,7 @@ class Win:
 
     def go_live(self):
         self.log("LIVE_CONFIRMED_BY_USER"); self.log("\n".join(E.summary(self.cfg, self.cams, "LIVE_CONFIG").splitlines()))
-        self.set_mode("connecting", "Obteniendo RTMP de TikTok…")
+        self.set_mode("connecting", "Getting RTMP from TikTok…")
         def fetch():  # network off the UI thread; /room/create/ is called exactly once here
             try: room = tiktok.create_room(self.log, self.cfg["title"]); GLib.idle_add(self.start_live, room)
             except Exception as e: GLib.idle_add(self.live_failed, str(e))
@@ -465,7 +465,7 @@ class Win:
         cmd = OL.write_config(self.cfg, self.live_url, cam, self.portal.monitor if self.portal else True, token,
                               E.desktop_monitor() if self.cfg["desktop_audio"] else None)
         if self.portal: self.portal.close(); self.portal = None; self.portal_ready = False  # OBS opens its own capture
-        self.obs_proc = OL.launch(cmd, self.log); self.set_mode("live", "Abriendo OBS…"); self.overlay.set_text("Emitiendo con OBS")
+        self.obs_proc = OL.launch(cmd, self.log); self.set_mode("live", "Opening OBS…"); self.overlay.set_text("Broadcasting with OBS")
         self.overlay.set_visible(True); self.picture.set_paintable(None)
         started = {"v": False}; t0 = time.time()
         def watch():
@@ -477,8 +477,8 @@ class Win:
                 if r: GLib.timeout_add_seconds(5, lambda: self.poll_viewers(r, lambda: self.room is r and self.mode == "live"))
                 if r and r.get("title"): GLib.timeout_add_seconds(10, lambda: (self.room is r and self.check_title(r), False)[1])
             v = (self.room or {}).get("viewers")
-            self.status.set_markup(("<span foreground='#e01b24'>●</span> EN DIRECTO CON OBS" if started["v"] else "OBS conectando con TikTok…")
-                                   + (f" · 👁 {v} espectadores" if v is not None else "") + " · DETENER LIVE cierra OBS")
+            self.status.set_markup(("<span foreground='#e01b24'>●</span> LIVE WITH OBS" if started["v"] else "OBS connecting to TikTok…")
+                                   + (f" · 👁 {v} viewers" if v is not None else "") + " · STOP LIVE closes OBS")
             return True
         GLib.timeout_add_seconds(1, watch); return False
 
@@ -487,8 +487,8 @@ class Win:
         if proc is None: return
         token = OL.scrub()  # blank the key; keep OBS's rotated portal token so the app doesn't ask again
         if token: E.ScreenPortal.TOKEN.write_text(json.dumps({"restore_token": token}))
-        self.log("STREAMING=STOPPED (OBS cerrado)"); self.live_url = None; self.finish_room(); self.chat.stop_overlay()
-        self.overlay.set_visible(False); self.set_mode("idle", "LIVE con OBS terminado")
+        self.log("STREAMING=STOPPED (OBS closed)"); self.live_url = None; self.finish_room(); self.chat.stop_overlay()
+        self.overlay.set_visible(False); self.set_mode("idle", "LIVE with OBS finished")
         if self.cfg["screen"]: self.pick_screen(forget=False)
         else: self.schedule_rebuild()
 
@@ -502,10 +502,10 @@ class Win:
             self.last_rec = rec
         try:
             eng = E.Engine(self.cfg, "rtmp", self.log, self.portal if self.cfg["screen"] else None, cam, E.preview_sink(self.cfg), record=rec,
-                           rtmp_url=self.live_url, on_error=self.live_error, on_eos=lambda: self.live_error("EOS inesperado"))
+                           rtmp_url=self.live_url, on_error=self.live_error, on_eos=lambda: self.live_error("Unexpected EOS"))
         except Exception as e: self.live_failed(str(e)); return False
         self.eng = eng; self.attach(eng); self.overlay.set_visible(False)
-        self.log("STREAMING=CONNECTING"); eng.start(); self.set_mode("live", "Conectando con TikTok…")
+        self.log("STREAMING=CONNECTING"); eng.start(); self.set_mode("live", "Connecting to TikTok…")
         state = {"bytes": 0, "started": False, "silent": 0, "last": {}, "stalled": {}}
         def watch():
             if self.eng is not eng or self.mode != "live": return False
@@ -522,9 +522,9 @@ class Win:
             warn = self.audio_watch(eng, state) if state["started"] else ""
             if warn is None: return False  # pipeline being rebuilt
             v = (self.room or {}).get("viewers")
-            if state["started"]: self.status.set_markup(f"<span foreground='#e01b24'>●</span> EN DIRECTO · {kbps} kbps enviados"
-                                                       + (f" · 👁 {v} espectadores" if v is not None else "")
-                                                       + (" · ⚠ TikTok no muestra el título" if (self.room or {}).get("title_bad") else "")
+            if state["started"]: self.status.set_markup(f"<span foreground='#e01b24'>●</span> LIVE · {kbps} kbps sent"
+                                                       + (f" · 👁 {v} viewers" if v is not None else "")
+                                                       + (" · ⚠ TikTok is not showing the title" if (self.room or {}).get("title_bad") else "")
                                                        + (f" · <span foreground='#e5a50a'>⚠ {warn}</span>" if warn else ""))
             return True
         GLib.timeout_add_seconds(1, watch)
@@ -536,7 +536,7 @@ class Win:
         self.log("STREAMING=ERROR")
         if self.retries < MAX_RETRIES and "screen_src" not in err and "cam_src" not in err and "mic_src" not in err:
             self.retries += 1; self.log(f"RECONNECT_ATTEMPT={self.retries}/{MAX_RETRIES}")
-            self.status.set_text(f"Conexión perdida · reintento {self.retries}/{MAX_RETRIES} en 3 s…")
+            self.status.set_text(f"Connection lost · retry {self.retries}/{MAX_RETRIES} in 3 s…")
             GLib.timeout_add_seconds(3, self.launch_live)
         else: self.live_failed(err)
 
@@ -554,12 +554,12 @@ class Win:
         Digital silence with the mic on (a real mic always has some noise) or a source that stops delivering for 6 s
         means the audio path is broken: restart the pipeline with the same RTMP URL (as a reconnect does)."""
         c = self.cfg; problems = []
-        for key, wanted, name in (("MIC", c["microphone"], "micrófono"), ("DESKTOP_AUDIO", c["desktop_audio"], "audio del equipo")):
+        for key, wanted, name in (("MIC", c["microphone"], "microphone"), ("DESKTOP_AUDIO", c["desktop_audio"], "desktop audio")):
             if not wanted: continue
             n = eng.counts.get(key, 0)
             state["stalled"][key] = state["stalled"].get(key, 0) + 1 if n == state["last"].get(key) else 0
             state["last"][key] = n
-            if state["stalled"][key] >= 6: problems.append(f"{name} sin datos")
+            if state["stalled"][key] >= 6: problems.append(f"{name} no data")
         # Sound moved to another output (headphones switched on, output changed): follow it.
         state["tick"] = state.get("tick", 0) + 1
         if c["desktop_audio"] and eng.desktop_dev and state["tick"] % 3 == 0:
@@ -567,24 +567,24 @@ class Win:
             state["moved"] = state.get("moved", 0) + 1 if now and now != eng.desktop_dev else 0
             if state["moved"] >= 2:  # same answer twice (~6 s): not a blip
                 self.log(f"DESKTOP_AUDIO_MOVED {eng.desktop_dev} -> {now}")
-                self.status.set_text("Audio del equipo cambió de salida · ajustando…"); self.stop_engine(self.launch_live); return None
-        peak = eng.audio_peak
+                self.status.set_text("Desktop audio output changed · adjusting…"); self.stop_engine(self.launch_live); return None
+            peak = eng.audio_peak
         state["silent"] = state["silent"] + 1 if peak is not None and peak < -120 else 0
         if state["silent"] >= 10 and not c["microphone"]:  # desktop-only silence can be legitimate: warn, don't restart
-            if not state.get("quiet_logged"): self.log("AUDIO=SILENT (solo audio del equipo)"); state["quiet_logged"] = True
-            return "sin sonido: no suena nada en la salida capturada"
+            if not state.get("quiet_logged"): self.log("AUDIO=SILENT (desktop audio only)"); state["quiet_logged"] = True
+            return "no sound: nothing playing on captured output"
         state["quiet_logged"] = state["silent"] >= 10 and state.get("quiet_logged", False)
-        if c["microphone"] and state["silent"] >= 8: problems.append("sin sonido (silencio digital)")
+        if c["microphone"] and state["silent"] >= 8: problems.append("no sound (digital silence)")
         if not problems:
             if state.get("warned"): self.log("AUDIO=OK"); state["warned"] = False
             return ""
         if not state.get("warned"): self.log("AUDIO=FAIL " + ", ".join(problems)); state["warned"] = True
         if self.audio_recoveries < self.MAX_AUDIO_RECOVERIES:
             self.audio_recoveries += 1
-            self.log(f"AUDIO_RECOVERY={self.audio_recoveries}/{self.MAX_AUDIO_RECOVERIES} reinicio de la cadena")
-            self.status.set_text(f"⚠ Audio perdido ({', '.join(problems)}) · recuperando {self.audio_recoveries}/{self.MAX_AUDIO_RECOVERIES}…")
+            self.log(f"AUDIO_RECOVERY={self.audio_recoveries}/{self.MAX_AUDIO_RECOVERIES} pipeline reset")
+            self.status.set_text(f"⚠ Audio lost ({', '.join(problems)}) · recovering {self.audio_recoveries}/{self.MAX_AUDIO_RECOVERIES}…")
             self.stop_engine(self.launch_live); return None
-        return "AUDIO: " + ", ".join(problems) + " (revisa micrófono/salida de audio)"
+        return "AUDIO: " + ", ".join(problems) + " (check microphone/audio output)"
 
     STATS = E.CFG / "live-stats.json"  # read by the chat overlay process
 
@@ -605,18 +605,18 @@ class Win:
 
     def live_failed(self, err):
         self.log("STREAMING=FAILED"); self.live_url = None; self.finish_room(); self.chat.stop_overlay()
-        self.set_mode("idle", "✖ LIVE no iniciado / detenido por error"); self.info("Error en LIVE", err); self.schedule_rebuild()
+        self.set_mode("idle", "✖ LIVE not started / stopped due to error"); self.info("LIVE Error", err); self.schedule_rebuild()
 
     def on_stop(self, *_):
         if self.mode not in ("connecting", "live"): return
         if getattr(self, "obs_proc", None):  # OBS stops the stream and finalizes its recording on SIGINT
-            self.set_mode("stopping", "Cerrando OBS…"); proc = self.obs_proc
+            self.set_mode("stopping", "Closing OBS…"); proc = self.obs_proc
             threading.Thread(target=lambda: (OL.stop(proc), GLib.idle_add(self.obs_finished)), daemon=True).start(); return
-        self.set_mode("stopping", "Deteniendo LIVE…")
+        self.set_mode("stopping", "Stopping LIVE…")
         def done():
             self.log("STREAMING=STOPPED"); self.live_url = None; self.finish_room(); self.chat.stop_overlay()
             rec = getattr(self, "last_rec", None); self.last_rec = None
-            self.set_mode("idle", "LIVE detenido" + (f" · grabado en {esc(rec)}" if rec and rec.exists() else "")); self.schedule_rebuild()
+            self.set_mode("idle", "LIVE stopped" + (f" · recorded to {esc(rec)}" if rec and rec.exists() else "")); self.schedule_rebuild()
         self.stop_engine(done)
 
     def on_close(self, *_):

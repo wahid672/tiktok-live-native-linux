@@ -75,7 +75,7 @@ class WM:
         self.x.XTranslateCoordinates.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_ulong, ctypes.c_int, ctypes.c_int,
                                                  ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
         self.d = self.x.XOpenDisplay(None)
-        if not self.d: raise RuntimeError("XWayland no disponible")
+        if not self.d: raise RuntimeError("XWayland not available")
         self.atom = lambda n: self.x.XInternAtom(self.d, n.encode(), 0)
 
     def above(self, xid):
@@ -121,17 +121,17 @@ def overlay(user):
         win.add_css_class("ttoverlay")
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL); win.set_child(box)
         bar = Gtk.Box(spacing=6); bar.add_css_class("ttbar")
-        title = Gtk.Label(label="✥ Chat TikTok", hexpand=True, xalign=0); bar.append(title)
+        title = Gtk.Label(label="✥ TikTok Chat", hexpand=True, xalign=0); bar.append(title)
         op = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0.3, 1.0, 0.05); op.set_value(prefs["opacity"]); op.set_size_request(110, -1)
-        op.set_tooltip_text("Opacidad"); bar.append(op)
+        op.set_tooltip_text("Opacity"); bar.append(op)
         corners = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-        menu = Gtk.MenuButton(icon_name="view-grid-symbolic", tooltip_text="Llevar a una esquina", popover=Gtk.Popover(child=corners))
+        menu = Gtk.MenuButton(icon_name="view-grid-symbolic", tooltip_text="Move to corner", popover=Gtk.Popover(child=corners))
         menu.add_css_class("flat"); bar.append(menu)
-        close = Gtk.Button(icon_name="window-close-symbolic", tooltip_text="Ocultar (vuelve con «Superponer» en la app)"); close.add_css_class("flat"); close.connect("clicked", lambda *_: a.quit())
+        close = Gtk.Button(icon_name="window-close-symbolic", tooltip_text="Hide (restore with «Overlay» in app)"); close.add_css_class("flat"); close.connect("clicked", lambda *_: a.quit())
         bar.append(close); box.append(Gtk.WindowHandle(child=bar))  # drag the bar to move the overlay
         # Undecorated windows have no resize border: a corner grip asks the WM for an interactive resize.
         ov = Gtk.Overlay(vexpand=True); ov.set_child(chat_view(user, log, overlay=True)); box.append(ov)
-        grip = Gtk.Label(label="◢", halign=Gtk.Align.END, valign=Gtk.Align.END, tooltip_text="Arrastra para cambiar el tamaño")
+        grip = Gtk.Label(label="◢", halign=Gtk.Align.END, valign=Gtk.Align.END, tooltip_text="Drag to resize")
         grip.add_css_class("ttgrip"); grip.set_cursor_from_name("se-resize"); ov.add_overlay(grip)
         click = Gtk.GestureClick()
         def resize(g, n, x, y):
@@ -146,7 +146,7 @@ def overlay(user):
             def corner(fx, fy):
                 w, h = win.get_width(), win.get_height(); m = 20
                 wm.move(xid, mon.x + m + round((mon.width - w - 2 * m) * fx), mon.y + m + round((mon.height - h - 2 * m) * fy))
-            for label, fx, fy in (("↖ Arriba izquierda", 0, 0), ("↗ Arriba derecha", 1, 0), ("↙ Abajo izquierda", 0, 1), ("↘ Abajo derecha", 1, 1)):
+            for label, fx, fy in (("↖ Top-left", 0, 0), ("↗ Top-right", 1, 0), ("↙ Bottom-left", 0, 1), ("↘ Bottom-right", 1, 1)):
                 b = Gtk.Button(label=label); b.add_css_class("flat")
                 b.connect("clicked", lambda _b, fx=fx, fy=fy: (corner(fx, fy), menu.popdown())); corners.append(b)
             if "x" in prefs: wm.move(xid, prefs["x"], prefs["y"])  # where the user left it last time
@@ -154,7 +154,7 @@ def overlay(user):
             wm.above(xid); wm.opacity(xid, op.get_value())
             op.connect("value-changed", lambda s: (wm.opacity(xid, s.get_value()), save(opacity=round(s.get_value(), 2))))
             def track():  # remember position after mouse drags or corner presets; show the app's official viewer count
-                try: title.set_label(f"✥ Chat TikTok · 👁 {json.loads((E.CFG / 'live-stats.json').read_text())['viewers']}")
+                try: title.set_label(f"✥ TikTok Chat · 👁 {json.loads((E.CFG / 'live-stats.json').read_text())['viewers']}")
                 except Exception: pass
                 x, y = wm.position(xid)
                 if (x, y) != (prefs.get("x"), prefs.get("y")): save(x=x, y=y)
@@ -171,5 +171,5 @@ def overlay(user):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2: sys.exit("uso: chat_overlay.py <usuario_tiktok>")
+    if len(sys.argv) != 2: sys.exit("usage: chat_overlay.py <tiktok_user>")
     overlay(sys.argv[1])
